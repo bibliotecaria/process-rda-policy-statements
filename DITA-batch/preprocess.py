@@ -1,6 +1,6 @@
 # processes csv file of DITA updates for RDA policy statements
-# Columns looked at are: In X update, Current policy, Revised policy for update, Paragraph, filename, divID
-# Columns output are: New, Revised policy for update, Revised markup, Paragraph, filename, divID 
+# Columns looked at are: In X update, Current policy, Revised policy for update, Paragraph, DITA key, filename, ID, divID
+# Columns output are: New, Revised policy for update, Revised markup, Paragraph, xrefID, filename, divID 
 
 import csv
 import os
@@ -9,9 +9,12 @@ import argparse
 import sys
 
 update_rows = []
+spurned_rows = []
 boilerplate = {}
 keyslist = []
-
+fieldnames =["New", "Revised policy for update", "Revised markup", "Paragraph", "filename", "xrefID", "divID"]
+checknames = fieldnames.append("DITA key")
+# add check for blank fields
 
 def sym_subs(string):
     newstring = string
@@ -30,8 +33,9 @@ def manipulate_string(string):
         string = newstring
     return(string)
 
-def create_markup_row(current, revised, paragraph, filename, divID):
+def create_markup_row(current, revised, paragraph, ditakey, filename, xrefid, divID):
     global update_rows
+    global spurned_rows
     row = {}
     if re.match("new",current,re.IGNORECASE):
         row['New'] = True
@@ -41,11 +45,14 @@ def create_markup_row(current, revised, paragraph, filename, divID):
     row['Revised markup'] = manipulate_string(revised)
     row['Paragraph'] = paragraph
     row['filename'] = filename
+    row['xrefID'] = ditakey + "/" + xrefid
     row['divID'] = divID
-    update_rows.append(row)
+    if " " in divID:
+        spurned_rows.append(row)
+    else:
+        update_rows.append(row)
 
-def write_out(output_file):
-    fieldnames =["New", "Revised policy for update", "Revised markup", "Paragraph", "filename", "divID"]
+def write_out(output_file, spurned_file):
     try:
         with open(output_file, "w", newline='', encoding='utf-8') as myfile:
             wr = csv.DictWriter(myfile, fieldnames=fieldnames)
@@ -59,7 +66,20 @@ def write_out(output_file):
                 except Exception as e:
                     sys.exit(f"Problem writing row '{row}' {e.__class__.__doc__} ")
     except Exception as e:
-        sys.exit(f"Problem found in writing to {csvfile}: {e.__class__.__doc__} [{e.__class__.__name__}]")
+        sys.exit(f"Problem found in writing to {myfile}: {e.__class__.__doc__} [{e.__class__.__name__}]")
+    try:
+        with open(spurned_file, "w", newline='', encoding='utf-8') as myfile:
+            wr = csv.DictWriter(myfile, fieldnames=fieldnames)
+            wr.writeheader()
+            for row in spurned_rows:
+                hitcounter = hitcounter + 1
+                try:
+                    if row is not None:
+                        wr.writerow(row)
+                except Exception as e:
+                    sys.exit(f"Problem writing row '{row}' {e.__class__.__doc__} ")
+    except Exception as e:
+        sys.exit(f"Problem found in writing to {myfile}: {e.__class__.__doc__} [{e.__class__.__name__}]")
     return(hitcounter)
 #outputs boilerplate markup
 
@@ -84,11 +104,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Get options.')
     parser.add_argument("filename", help="Path to DITA updates csv file required.")
     parser.add_argument("-o", help="Path to output csv file required.")
+    parser.add_argument("-s", help="Path to spurned updates csv file required.")
     parser.add_argument("-r", help="Path to reference file of boilerplate conversions.")
     args = parser.parse_args()
     # validate two arguments
     input_filename = args.filename
     output_file = args.o
+    spurned_file = args.s
     reference_file = args.r
     read_ref_table(reference_file)
 
@@ -99,6 +121,6 @@ if __name__ == "__main__":
         for row in reader:
             counter += 1
             if row['In X update'] != "":
-                create_markup_row(row['Current policy'], row['Revised policy for update'], row['Paragraph'], row['filename'], row['divID'])
-    counter = write_out(output_file)
-    print(f"{counter} records written to {output_file}")
+                create_markup_row(row['Current policy'], row['Revised policy for update'], row['Paragraph'], row['DITA Key'], row['filename'], row['ID'], row['divID'])
+    counter = write_out(output_file, spurned_file)
+    print(f"{counter} records written to {output_file} or {spurned_file}")
