@@ -13,6 +13,20 @@ import argparse
 import sys
 
 logs = []
+update_list = {}
+
+
+def get_update_list(input_filename):
+    with open(input_filename, newline='', encoding="utf-8-sig") as csvfile:
+        reader = csv.DictReader(csvfile)
+        counter = 0
+        for row in reader:
+            counter += 1
+            if row["filename"] in update_list:
+                update_list[row["filename"]].append(row)
+            else:
+                update_list[row["filename"]] = [row]
+
 
 
 if __name__ == "__main__":
@@ -38,14 +52,6 @@ if __name__ == "__main__":
     if err != "":
         sys.exit(f"Unable to continue {err}")
     # now we're good!
+    get_update_list(input_filename)
+    print("done")
 
-    with open(input_filename, newline='', encoding="utf-8-sig") as csvfile:
-        reader = csv.DictReader(csvfile)
-        counter = 0
-        for row in reader:
-            counter += 1
-            if row['In X update'] != "":
-                handle_domain(row['Domain'])
-                create_markup_row(row['Current policy'], row['Revised policy for update'], row['Paragraph'], row['DITA Key'], row['filename'], row['ID'], row['divID'])
-    counter = write_out(output_file, spurned_file)
-    print(f"{counter} records written to {output_file} or {spurned_file}")
