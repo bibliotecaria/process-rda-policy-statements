@@ -11,9 +11,23 @@ import os
 import re
 import argparse
 import sys
+import datetime
 
 logs = []
 update_list = {}
+
+def logline(status, statement, filename, divID, error):
+    t = datetime.datetime.now()
+    tstring = t.strftime("%Y-%m-%d %H:%M:%S")
+    line = {
+        "time" : tstring,
+        "status" : status,
+        "statement" : statement,
+        "filename" : filename,
+        "divID" : divID,
+        "error" : error
+        }
+    logs.append(line)
 
 
 def get_update_list(input_filename):
