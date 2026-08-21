@@ -16,7 +16,18 @@ import datetime
 logs = []
 update_list = {}
 
-def logline(status, statement, filename, divID, error):
+def print_logline(line):
+    return(f"{line["time"]}\t{line["status"]}\t{line["statement"]}\t{line["filename"]}\t{line["divID"]}\t{line["error"]}")
+
+def write_log(log):
+    try:
+        with open(log, "w", newline='', encoding='utf-8') as myfile:
+            for line in logs:
+                myfile.write(print_logline(line))
+    except Exception as e:
+        sys.exit((f"Problem found in writing to {myfile}: {e.__class__.__doc__} [{e.__class__.__name__}]"))
+
+def logline(status, statement, filename = "", divID = "", error = ""):
     t = datetime.datetime.now()
     tstring = t.strftime("%Y-%m-%d %H:%M:%S")
     line = {
@@ -28,6 +39,7 @@ def logline(status, statement, filename, divID, error):
         "error" : error
         }
     logs.append(line)
+    return(line)
 
 
 def get_update_list(input_filename):
@@ -44,6 +56,7 @@ def get_update_list(input_filename):
 
 
 if __name__ == "__main__":
+    print(print_logline(logline("Success", "Start process")))
     parser = argparse.ArgumentParser(description='Get options.')
     parser.add_argument("-old", help="Path to old subdirectory required.")
     parser.add_argument("-new", help="Path to new subdirectory required.")
@@ -56,15 +69,18 @@ if __name__ == "__main__":
     log_file = args.log
     err = ""
     if not os.path.exists(input_filename):
-        err = "Can't find filename " + input_filename + " "
+        err = "Can't find filename " + input_filename + "; "
     if not os.path.exists(input_directory):
-        err += "Can't find input directory " + input_directory + " "
+        err += "Can't find input directory " + input_directory + "; "
     try:
         os.makedirs(output_directory, exist_ok=True)
+        print(print_logline(logline("Success", "Created output directory", output_directory)))
     except Exception as e:
         err += "Error creating directory " + output_directory + " [" + e + "] "
     if err != "":
-        sys.exit(f"Unable to continue {err}")
+        print_logline(logline("Abort", err))
+        write_log(log_file)
+        sys.exit(f"Aborted for error(s); see log file {log_file}")
     # now we're good!
     get_update_list(input_filename)
     print("done")
