@@ -12,6 +12,7 @@ import re
 import argparse
 import sys
 import datetime
+import xml.etree.ElementTree as ET
 
 logs = []
 update_list = {}
@@ -53,6 +54,42 @@ def get_update_list(input_filename):
             else:
                 update_list[row["filename"]] = [row]
 
+def execute_update(div, update_row):
+    # get paragraph list
+    plist = div.findall("p")
+    parano = update_row["Paragraph"]
+    parano = int(parano) - 1
+    print(update_row)
+    if update_row["Revised policy for update"] == "DELETE":
+        print("DELETE")
+    elif update_row["New"] == "True":
+        print("New")
+    else:
+        print("modify")
+
+def process_update_list(directory):
+    for filename in update_list:
+        filepath = directory + "/" + filename
+        # filepath = filename
+        try:
+            tree = ET.parse(filepath)
+            topic = tree.getroot()
+            #topic is root of DITA file
+            for update_row in update_list[filename]:
+                path = './/*[@id="'+ update_row["divID"] +'"]'
+                div = topic.find(path)
+                if div is not None:
+                    #decide on what to do with div here: add, replace, or delete
+                    execute_update(div, update_row)
+                else:
+                    print(print_logline(logline("Warning", "Div not found", filepath, f"Element with specified ID [{path}] not found.")))        
+        except FileNotFoundError:
+            print(print_logline(logline("Failure", "Opened DITA file", filepath, "File not found.")))        
+        except ET.ParseError:
+            print(print_logline(logline("Failure", "Parsed DITA file", filepath, f"{e.__class__.__doc__} [{e.__class__.__name__}]")))
+        except Exception as e:
+            err = f"{e.__class__.__doc__} [{e.__class__.__name__}]"
+            print(err)
 
 
 if __name__ == "__main__":
@@ -83,5 +120,6 @@ if __name__ == "__main__":
         sys.exit(f"Aborted for error(s); see log file {log_file}")
     # now we're good!
     get_update_list(input_filename)
+    process_update_list(input_directory)
     print("done")
 
