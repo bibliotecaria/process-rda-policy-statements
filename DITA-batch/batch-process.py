@@ -54,15 +54,43 @@ def get_update_list(input_filename):
             else:
                 update_list[row["filename"]] = [row]
 
+# returns True for successful update
+def add_para(div, rev_markup, parano, plist):
+    pass
+
+# returns True for successful update
+def replace_para(div, rev_markup, parano, plist):
+    pass
+
+# returns True for successful update
+def delete_para(parano, plist):
+    p = plist[parano]
+    parent= p.getparent()
+    parent.remove(p)
+    # we need to put this process in a try/catch
+
+
+# returns True for successful update
 def execute_update(div, update_row):
-    # get paragraph list
-    plist = div.findall("p")
+    # get paragraph number from update row in XXupdate.csv
     parano = update_row["Paragraph"]
     parano = int(parano) - 1
+    isnew = (update_row["New"] == "True")
     print(update_row)
+    # get paragraph list of div in DITA file
+    plist = div.findall("p")
+    ismismatch = False
+    if len(plist) < parano:
+        if not isnew:
+            ismismatch = True
+        elif len(plist) < (parano - 1):
+            ismismatch = True
+    if ismismatch:
+        print_logline(logline("Warning", "Paragraph number mismatch", f"{update_row["filename"]}, {update_row["divID"]}"))
+        return(False)
     if update_row["Revised policy for update"] == "DELETE":
         print("DELETE")
-    elif update_row["New"] == "True":
+    elif isnew:
         print("New")
     else:
         print("modify")
