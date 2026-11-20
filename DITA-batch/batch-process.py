@@ -103,7 +103,16 @@ def process_update_list(directory, output_directory):
     for filename in update_list:
         filepath = directory + "/" + filename
         output_filepath = output_directory + "/" + filename
-        # filepath = filename
+        # split output_filepath at forward slashes in order to create all subdirectories and then put back together with filename
+        slist = output_filepath.split("/")
+        slist = slist[:-1]
+        subdirs = "/".join(slist)
+        try:
+            os.makedirs(subdirs, exist_ok=True)
+        except Exception as e:
+            print(print_logline(logline("Warning", "New DITA subdirectory not created", subdirs, f"{e.__class__.__doc__} [{e.__class__.__name__}]")))
+            continue
+            # we can't process a file if we cannot write it out
         try:
             tree = ET.parse(filepath)
             topic = tree.getroot()
@@ -117,9 +126,13 @@ def process_update_list(directory, output_directory):
                 else:
                     print(print_logline(logline("Warning", "Div not found", filepath, f"Element with specified ID [{path}] not found.")))
             # write out new file to output_filepath
+            # TO DO 12/04/2026 now deal with changed policy statements
             try:
-                tree.write(open(output_filepath, 'w'))
-                # add in IOError and PermissionError for this try/catch/throw 
+                f = open(output_filepath, 'w')
+                tree.write(f, encoding='unicode', method='xml')
+                print(print_logline(logline("Success", "File written ", output_filepath))) 
+            except (IOError, PermissionError) as e:
+                print(print_logline(logline("Failure", "Wrote new DITA file", output_filepath, f"{e.__class__.__doc__} [{e.__class__.__name__}]")))
         except FileNotFoundError:
             print(print_logline(logline("Failure", "Opened DITA file", filepath, "File not found.")))        
         except ET.ParseError:
@@ -157,6 +170,6 @@ if __name__ == "__main__":
         sys.exit(f"Aborted for error(s); see log file {log_file}")
     # now we're good!
     get_update_list(input_filename)
-    process_update_list(input_directory)
+    process_update_list(input_directory, output_directory)
     print("done")
 
