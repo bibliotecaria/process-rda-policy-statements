@@ -54,23 +54,25 @@ def get_update_list(input_filename):
             else:
                 update_list[row["filename"]] = [row]
 
-# returns True for successful update
+# returns None for successful update, otherwise error message
 def add_para(div, rev_markup, parano, plist):
     pass
 
-# returns True for successful update
+# returns None for successful update, otherwise error message
 def replace_para(div, rev_markup, parano, plist):
     pass
 
-# returns True for successful update
-def delete_para(parano, plist):
+# returns None for successful update, otherwise error message
+def delete_para(div, parano, plist):
     p = plist[parano]
-    parent= p.getparent()
-    parent.remove(p)
-    # we need to put this process in a try/catch
+    # error check to remove paragraph inside div
+    try:
+        div.remove(p)
+    except Exception as e:
+        return(f"{e.message} Unable to remove paragraph {parano+1} [{p}]")
+    return(None)
 
-
-# returns True for successful update
+# returns True for successful update, otherwise False and print log
 def execute_update(div, update_row):
     # get paragraph number from update row in XXupdate.csv
     parano = update_row["Paragraph"]
@@ -89,15 +91,18 @@ def execute_update(div, update_row):
         print_logline(logline("Warning", "Paragraph number mismatch", f"{update_row["filename"]}, {update_row["divID"]}"))
         return(False)
     if update_row["Revised policy for update"] == "DELETE":
-        print("DELETE")
+        retval = delete_para(div, parano, plist)
+        if retval is not None:
+            print_logline(logline("Warning", retval, f"{update_row["filename"]}, {update_row["divID"]}"))
     elif isnew:
         print("New")
     else:
         print("modify")
 
-def process_update_list(directory):
+def process_update_list(directory, output_directory):
     for filename in update_list:
         filepath = directory + "/" + filename
+        output_filepath = output_directory + "/" + filename
         # filepath = filename
         try:
             tree = ET.parse(filepath)
@@ -110,7 +115,11 @@ def process_update_list(directory):
                     #decide on what to do with div here: add, replace, or delete
                     execute_update(div, update_row)
                 else:
-                    print(print_logline(logline("Warning", "Div not found", filepath, f"Element with specified ID [{path}] not found.")))        
+                    print(print_logline(logline("Warning", "Div not found", filepath, f"Element with specified ID [{path}] not found.")))
+            # write out new file to output_filepath
+            try:
+                tree.write(open(output_filepath, 'w'))
+                # add in IOError and PermissionError for this try/catch/throw 
         except FileNotFoundError:
             print(print_logline(logline("Failure", "Opened DITA file", filepath, "File not found.")))        
         except ET.ParseError:
